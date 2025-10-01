@@ -78,7 +78,6 @@
   </style>
 </head>
 <body>
-  
   <div class="map-layout">
     <aside class="sidebar" id="sidebar">
       <header class="sidebar__header">
@@ -145,7 +144,7 @@
       function exportCSV() { if (state.filteredLocations.length === 0) { return showNotification("Nessun risultato da esportare.", "error"); } const headers = ["Nome", "Indirizzo", "Categoria", "Prezzo", "Voto Medio", "Numero Voti", "Servizi"]; const rows = state.filteredLocations.map(l => { const rowData = [l.name, l.address, l.category, l.price_level, calculateAverageRating(l.ratings), l.ratings.length, l.services.join(';')]; return rowData.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","); }); const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n"); const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "aperitivomap_roma.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
       function findNearMe() { if (!navigator.geolocation) { return showNotification("Geolocalizzazione non supportata.", "error"); } dom.nearMeBtn.disabled = true; dom.nearMeBtn.textContent = "Localizzo..."; navigator.geolocation.getCurrentPosition( position => { if (state.userLocationLayer) { state.map.removeLayer(state.userLocationLayer); } const userLatLng = L.latLng(position.coords.latitude, position.coords.longitude); const distanceMeters = parseFloat(dom.distanceFilter.value) * 1000; const userMarker = L.marker(userLatLng).bindPopup("Tu sei qui"); const circle = L.circle(userLatLng, { radius: distanceMeters, color: 'var(--color-secondary)', weight: 2 }); state.userLocationLayer = L.layerGroup([userMarker, circle]).addTo(state.map); const nearby = state.locations.filter(l => l.lat != null && L.latLng(l.lat, l.lng).distanceTo(userLatLng) <= distanceMeters ); updateMap(nearby); updateList(nearby); state.map.fitBounds(circle.getBounds(), { padding: [20,20] }); showNotification(`Trovati ${nearby.length} locali a meno di ${dom.distanceFilter.value} km.`); dom.nearMeBtn.disabled = false; dom.nearMeBtn.textContent = "Cerca Vicino a me"; }, () => { showNotification("Impossibile ottenere la posizione.", "error"); dom.nearMeBtn.disabled = false; dom.nearMeBtn.textContent = "Cerca Vicino a me"; } ); }
       function updateWhatsNew() { const recent = state.locations.filter(l => l.addedDate).sort((a,b) => new Date(b.addedDate) - new Date(a.addedDate)).slice(0, 3); if(recent.length > 0) { dom.whatsNewContent.innerHTML = recent.map(l => `<div class="result-item" data-id="${l.id}"><strong class="result-item__name">${l.name}</strong><br><small class="result-item__details">${l.address}</small></div>`).join(''); } else { dom.whatsNewContent.innerHTML = "<p>Nessuna novità recente.</p>"; } }
-      function updateURL() { const center = state.map.getCenter(); const zoom = state.map.getZoom(); const params = new URLSearchParams(); params.set('lat', center.lat.toFixed(4)); params.set('lng', center.lng.toFixed(4)); params.set('zoom', zoom); history.pushState({}, '', `${window.location.pathname}?${params.toString()}`); }
+      function updateURL() { if (!state.map) return; const center = state.map.getCenter(); const zoom = state.map.getZoom(); const params = new URLSearchParams(); params.set('lat', center.lat.toFixed(4)); params.set('lng', center.lng.toFixed(4)); params.set('zoom', zoom); history.pushState({}, '', `${window.location.pathname}?${params.toString()}`); }
       function setupEventListeners() {
           const filters = [dom.searchBox, dom.categoryFilter, dom.priceFilter, dom.ratingFilter, dom.servicesFilter];
           filters.forEach(el => el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', applyFilters));
@@ -177,7 +176,7 @@
         populateServicesFilter();
         setupEventListeners();
         
-        // NOTE: I dati dei locali sono definiti qui sotto per avere un file unico. Ho ripristinato la lista completa.
+        // NOTE: I dati dei locali sono definiti qui sotto per avere un file unico.
         const localData = [
             { "id": 1, "name": "Jerry Thomas Speakeasy", "lat": 41.8954, "lng": 12.4725, "address": "Vicolo Cellini, 30 (Centro Storico)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Jerry+Thomas", "services": ["wifi", "zona pedonale"], "status": "open", "addedDate": "2025-09-15" },
             { "id": 2, "name": "Freni e Frizioni", "lat": 41.8895, "lng": 12.4687, "address": "Via del Politeama, 4 (Trastevere)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Freni+e+Frizioni", "services": ["wifi", "bus", "zona pedonale"], "status": "open", "addedDate": "2025-09-10" },
