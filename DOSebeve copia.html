@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AperitivoMap - Roma (Corretto)</title>
+  <meta name="description" content="Trova i migliori locali per aperitivi, cocktail e birre a Roma e provincia. Filtra per categoria, prezzo, servizi e posizione.">
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" integrity="sha256-k2jug3sDk8r4S2IK8c46Cjwb2I9SIj2z2k4RcJn+dMA=" crossorigin=""/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" integrity="sha256-L9jtjpItu52zkFUxgpaNdjzL+bS1jW2SMmgU0YvbzS4=" crossorigin=""/>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --color-background: #F5F5F5; --color-surface: #FFFFFF; --color-primary: #222222; --color-secondary: #D81B60; --color-accent: #FFC107; --color-muted: #E0E0E0; --color-success: #28a745; --color-error: #dc3545; --font-serif: 'Merriweather', serif; --font-sans: 'Montserrat', sans-serif; --space-sm: 8px; --space-md: 16px; --radius-md: 8px; --border-width: 1px; --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1); --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; height: 100vh; background: var(--color-background); font-family: var(--font-sans); color: var(--color-primary); overflow: hidden; }
+    .map-layout { display: flex; height: 100%; width: 100%; position: relative; }
+    .sidebar { position: absolute; top: 0; left: 0; height: 100%; width: 340px; max-width: 90%; background: var(--color-surface); border-right: var(--border-width) solid var(--color-muted); display: flex; flex-direction: column; box-shadow: var(--shadow-md); z-index: 1001; transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
+    .sidebar.is-open { transform: translateX(0); }
+    .sidebar__content { flex-grow: 1; overflow-y: auto; padding-bottom: var(--space-md); }
+    .map-container { height: 100%; width: 100%; }
+    #map { height: 100%; width: 100%; background-color: var(--color-muted); }
+    .sidebar__header { background: var(--color-primary); color: #FFF; padding: var(--space-md); flex-shrink: 0; }
+    .sidebar__title { margin: 0; font-family: var(--font-serif); font-size: 1.5rem; }
+    .sidebar__subtitle { margin: 4px 0 0; font-size: 0.9rem; opacity: 0.8; }
+    .filter-section { padding: var(--space-md); border-bottom: var(--border-width) solid var(--color-muted); }
+    .filter-section__title { font-family: var(--font-serif); margin: 0 0 var(--space-md) 0; font-size: 1.1rem; color: var(--color-secondary); }
+    .form-group { margin-bottom: var(--space-md); }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-group__label { font-family: var(--font-sans); font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: var(--space-sm); }
+    .form-group__input, .form-group__select { width: 100%; padding: var(--space-sm); font-family: var(--font-sans); border: var(--border-width) solid var(--color-muted); background: #FFF; border-radius: var(--radius-md); }
+    .form-group__input:focus, .form-group__select:focus { outline: none; border-color: var(--color-secondary); box-shadow: 0 0 0 2px rgba(216, 27, 96, 0.2); }
+    .services-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); }
+    .service-checkbox__label { display: flex; align-items: center; font-weight: 400; font-size: 0.9rem; cursor: pointer; }
+    .service-checkbox__input { margin-right: var(--space-sm); }
+    .button { padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); border: none; cursor: pointer; font-weight: 600; width: 100%; text-align: center; transition: opacity 0.2s, background-color 0.2s; }
+    .button:hover { opacity: 0.9; }
+    .button:disabled { background-color: var(--color-muted); cursor: not-allowed; }
+    .button--primary { background: var(--color-secondary); color: #FFF; }
+    .button--accent { background: var(--color-accent); color: var(--color-primary); }
+    .results-section__header { display: flex; justify-content: space-between; align-items: center; padding: 0 var(--space-md); margin: var(--space-md) 0 var(--space-sm); }
+    .results-section__title { font-family: var(--font-serif); margin: 0; }
+    .results-section__count { font-size: 0.9rem; font-weight: 600; background-color: var(--color-background); padding: 2px 8px; border-radius: 12px; }
+    .results-list { list-style: none; padding: 0; margin: 0; }
+    .result-item { padding: var(--space-md); border-bottom: var(--border-width) solid var(--color-muted); cursor: pointer; transition: background 0.2s; }
+    .result-item.is-active, .result-item:hover { background: #fdf0f5; }
+    .result-item__name { font-family: var(--font-sans); font-weight: 600; display: block; }
+    .result-item__details { font-size: 0.9rem; color: #555; }
+    .badge { background: var(--color-primary); color: #FFF; padding: 2px 6px; border-radius: var(--radius-md); font-size: 0.75rem; margin-left: var(--space-sm); display: inline-block; vertical-align: middle; }
+    .custom-popup__image { width: 100%; height: 120px; object-fit: cover; border-radius: var(--radius-md) var(--radius-md) 0 0; border: none; background-color: var(--color-muted); }
+    .custom-popup__content { padding: var(--space-sm) var(--space-md); }
+    .custom-popup__title { font-family: var(--font-serif); font-size: 1.1rem; margin: 0 0 var(--space-sm); }
+    .custom-popup__text { margin: 0 0 4px; font-size: 0.85rem; }
+    .reviews { margin-top: var(--space-md); border-top: 1px solid var(--color-muted); padding-top: var(--space-sm); }
+    .reviews__rating-summary { font-weight: 600; display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md); }
+    .reviews__stars { color: var(--color-accent); font-size: 1.2rem; }
+    .reviews__form textarea { width: 100%; min-height: 60px; padding: var(--space-sm); border-radius: var(--radius-md); border: 1px solid var(--color-muted); font-family: var(--font-sans); resize: vertical; }
+    .reviews__form .button { margin-top: var(--space-sm); }
+    .rating-input { display: flex; flex-direction: row-reverse; justify-content: flex-end; }
+    .rating-input input { display: none; }
+    .rating-input label { cursor: pointer; font-size: 1.5rem; color: var(--color-muted); transition: color 0.2s; }
+    .rating-input input:checked ~ label, .rating-input label:hover, .rating-input label:hover ~ label { color: var(--color-accent); }
+    .reviews__list { margin-top: var(--space-md); max-height: 150px; overflow-y: auto; }
+    .review { font-size: 0.9rem; padding-bottom: var(--space-sm); margin-bottom: var(--space-sm); border-bottom: 1px dashed var(--color-muted); }
+    .review:last-child { border-bottom: none; }
+    .sidebar-toggle { display: block; position: absolute; top: var(--space-md); left: var(--space-md); z-index: 1002; background: var(--color-surface); border: var(--border-width) solid var(--color-muted); border-radius: 50%; width: 44px; height: 44px; font-size: 1.5rem; cursor: pointer; box-shadow: var(--shadow-sm); }
+    .notification { position: fixed; bottom: 20px; left: 50%; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); color: white; z-index: 2000; box-shadow: var(--shadow-md); opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translate(-50%, 20px); pointer-events: none; }
+    .notification.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .notification--success { background-color: var(--color-success); }
+    .notification--error { background-color: var(--color-error); }
+    @media (min-width: 769px) { .sidebar { position: static; height: 100vh; transform: translateX(0); flex-shrink: 0; } .sidebar-toggle { display: none; } }
+  </style>
+</head>
+<body>
+  
+  <div class="map-layout">
+    <aside class="sidebar" id="sidebar">
+      <header class="sidebar__header">
+        <h1 class="sidebar__title">AperitivoMap 🍹</h1>
+        <p class="sidebar__subtitle">I migliori locali di Roma e provincia</p>
+      </header>
+      
+      <div class="sidebar__content">
+        <section class="filter-section" aria-labelledby="whats-new-title"> <h2 id="whats-new-title" class="filter-section__title">Ultime Novità</h2> <article id="whats-new-content"> <p>Caricamento novità...</p> </article> </section>
+        <section class="filter-section" role="search" aria-labelledby="filter-title">
+          <h2 id="filter-title" class="filter-section__title">Esplora</h2>
+          <div class="form-group"> <label for="search-box" class="form-group__label">Cerca per nome o quartiere</label> <input type="text" id="search-box" class="form-group__input" placeholder="Es. Jerry Thomas, Trastevere..."> </div>
+          <div class="form-group"> <label for="category-filter" class="form-group__label">Categoria</label> <select id="category-filter" class="form-group__select"> <option value="all">Tutte</option> <option value="Cocktail Bar">Cocktail Bar</option> <option value="Wine Bar">Wine Bar</option> <option value="Birreria">Birreria</option> <option value="Pub">Pub</option> <option value="Enoteca">Enoteca</option> </select> </div>
+          <div class="form-group"> <label for="price-filter" class="form-group__label">Prezzo</label> <select id="price-filter" class="form-group__select"> <option value="all">Tutti</option> <option value="€">€</option> <option value="€€">€€</option> <option value="€€€">€€€</option> </select> </div>
+          <div class="form-group"> <label for="rating-filter" class="form-group__label">Valutazione Minima</label> <select id="rating-filter" class="form-group__select"> <option value="0">Qualsiasi</option> <option value="3">★★★☆☆ e più</option> <option value="4">★★★★☆ e più</option> </select> </div>
+          <div class="form-group"> <h3 class="form-group__label">Servizi</h3> <div id="services-filter" class="services-grid"></div> </div>
+        </section>
+        <section class="filter-section" aria-labelledby="position-title">
+          <h2 id="position-title" class="filter-section__title">Posizione</h2>
+          <div class="form-group"> <label for="distance-filter" class="form-group__label">Distanza massima da me</label> <select id="distance-filter" class="form-group__select"> <option value="1">1 km</option> <option value="2">2 km</option> <option value="5">5 km</option> <option value="10">10 km</option> </select> </div>
+          <div class="form-group"> <button id="near-me-btn" class="button button--primary">Cerca Vicino a me</button> </div>
+          <div class="form-group"> <button id="export-csv-btn" class="button button--accent">Esporta Risultati (CSV)</button> </div>
+        </section>
+        <section aria-labelledby="results-title">
+            <div class="results-section__header"> <h2 id="results-title" class="results-section__title">Risultati</h2> <span id="results-count" class="results-section__count"></span> </div>
+            <ul id="results-list" class="results-list" aria-live="polite"> <li class='result-item'>Caricamento locali...</li> </ul>
+        </section>
+      </div>
+    </aside>
+    <main class="map-container" id="map-container"> <div id="map" role="application" aria-label="Mappa dei locali"></div> </main>
+  </div>
+  <button id="sidebar-toggle" class="sidebar-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Apri/Chiudi menu filtri">☰</button>
+  <div id="notification" class="notification" role="alert" aria-live="assertive"></div>
+  
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" integrity="sha256-9ZypKMNsM+bN4Y5GGgYscAKyM9yK2SUSyA521bJfbPg=" crossorigin=""></script>
+  
+  <script>
+    (function() {
+      "use strict";
+      const state = { locations: [], filteredLocations: [], allServices: { "metro": "🚇 Metro", "bus": "🚌 Bus", "treno": "🚆 Treno", "tram": "🚊 Tram", "parcheggio": "🅿️ Parcheggio", "ricarica_elettrica": "🔌 Ricarica EV", "sharing": "🛴 Sharing", "wifi": "📶 WiFi", "accessibile": "♿ Accessibile", "zona pedonale": "🚶 Zona Pedonale", "vista lago": "🏞️ Vista Lago", "vista mare": "🌊 Vista Mare", "giardino": "🌳 Giardino" }, map: null, markers: null, markerMap: {}, userLocationLayer: null, isInitialLoad: true, };
+      const dom = { sidebar: document.getElementById('sidebar'), mapContainer: document.getElementById('map-container'), searchBox: document.getElementById('search-box'), categoryFilter: document.getElementById('category-filter'), priceFilter: document.getElementById('price-filter'), ratingFilter: document.getElementById('rating-filter'), servicesFilter: document.getElementById('services-filter'), resultsList: document.getElementById('results-list'), resultsCount: document.getElementById('results-count'), nearMeBtn: document.getElementById('near-me-btn'), distanceFilter: document.getElementById('distance-filter'), exportCsvBtn: document.getElementById('export-csv-btn'), sidebarToggle: document.getElementById('sidebar-toggle'), notification: document.getElementById('notification'), whatsNewContent: document.getElementById('whats-new-content') };
+      function showNotification(message, type = 'success', duration = 3000) { dom.notification.textContent = message; dom.notification.className = `notification notification--${type}`; dom.notification.classList.add('is-visible'); setTimeout(() => { dom.notification.classList.remove('is-visible'); }, duration); }
+      function calculateAverageRating(ratings) { if (!ratings || ratings.length === 0) return 0; const sum = ratings.reduce((acc, curr) => acc + curr, 0); return (sum / ratings.length).toFixed(1); }
+      function renderStars(rating) { let stars = ''; for (let i = 1; i <= 5; i++) { if (i <= rating) stars += '★'; else if (i - 0.5 <= rating) stars += '½'; else stars += '☆'; } return stars; }
+      function debounce(func, delay = 300) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => { func.apply(this, args); }, delay); }; }
+      function loadReviews() { try { const reviews = localStorage.getItem('aperitivoMapReviews'); return reviews ? JSON.parse(reviews) : {}; } catch (e) { console.error("Failed to load reviews", e); return {}; } }
+      function saveReviews(reviews) { try { localStorage.setItem('aperitivoMapReviews', JSON.stringify(reviews)); } catch (e) { console.error("Failed to save reviews", e); } }
+      function populateServicesFilter() { dom.servicesFilter.innerHTML = Object.entries(state.allServices).map(([key, value]) => `<div class="service-checkbox"><label class="service-checkbox__label"><input type="checkbox" value="${key}" class="service-checkbox__input"> ${value}</label></div>`).join(""); }
+      const applyFilters = debounce(() => {
+        const search = dom.searchBox.value.toLowerCase().trim(); const cat = dom.categoryFilter.value; const price = dom.priceFilter.value; const minRating = parseFloat(dom.ratingFilter.value); const selectedServices = [...dom.servicesFilter.querySelectorAll("input:checked")].map(c => c.value);
+        state.filteredLocations = state.locations.filter(l => {
+          const searchMatch = l.name.toLowerCase().includes(search) || l.address.toLowerCase().includes(search); const categoryMatch = (cat === "all" || l.category === cat); const priceMatch = (price === "all" || l.price_level === price); const servicesMatch = selectedServices.every(s => l.services.includes(s)); const ratingMatch = parseFloat(calculateAverageRating(l.ratings)) >= minRating;
+          return searchMatch && categoryMatch && priceMatch && servicesMatch && ratingMatch;
+        });
+        if (state.map) { updateMap(state.filteredLocations); updateURL(); }
+        updateList(state.filteredLocations);
+      });
+      function updateMap(locs) { state.markers.clearLayers(); state.markerMap = {}; const validLocations = locs.filter(l => l.lat != null && l.lng != null); validLocations.forEach(l => { const marker = L.marker([l.lat, l.lng], { alt: `Marker per ${l.name}` }); marker.bindPopup(() => createPopupContent(l), { minWidth: 280 }); state.markerMap[l.id] = marker; state.markers.addLayer(marker); }); if (!state.isInitialLoad && validLocations.length > 0 && state.markers.getBounds().isValid()) { state.map.fitBounds(state.markers.getBounds(), { padding: [50, 50], maxZoom: 16 }); } state.isInitialLoad = false; }
+      function createPopupContent(location) { const avgRating = calculateAverageRating(location.ratings); const starRating = renderStars(avgRating); const commentsHtml = location.comments && location.comments.length > 0 ? location.comments.map(c => `<div class="review"><p>"${c.text}"</p></div>`).join('') : '<p>Nessuna recensione ancora.</p>'; return `<article class="custom-popup" id="popup-${location.id}"><img src="${location.photo}" alt="Foto di ${location.name}" class="custom-popup__image" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/300x150/eeeeee/aaaaaa?text=Immagine+non+disponibile';"><div class="custom-popup__content"><h3 class="custom-popup__title">${location.name}${location.status === "Coming Soon" ? ' <span class="badge">In Arrivo</span>' : ''}</h3><p class="custom-popup__text"><strong>📍 Indirizzo:</strong> ${location.address}</p><div class="reviews__rating-summary"><span class="reviews__stars">${starRating}</span><span>${avgRating}/5 (${location.ratings.length} voti)</span></div><div class="reviews"><h4>Lascia una recensione</h4><form class="reviews__form" data-id="${location.id}"><div class="rating-input"><input type="radio" id="star5-${location.id}" name="rating" value="5" /><label for="star5-${location.id}">☆</label><input type="radio" id="star4-${location.id}" name="rating" value="4" /><label for="star4-${location.id}">☆</label><input type="radio" id="star3-${location.id}" name="rating" value="3" /><label for="star3-${location.id}">☆</label><input type="radio" id="star2-${location.id}" name="rating" value="2" /><label for="star2-${location.id}">☆</label><input type="radio" id="star1-${location.id}" name="rating" value="1" /><label for="star1-${location.id}">☆</label></div><textarea name="comment" placeholder="Il tuo commento..." required minlength="5"></textarea><button type="submit" class="button button--primary">Invia</button></form><h4>Commenti</h4><div class="reviews__list">${commentsHtml}</div></div></div></article>`; }
+      function handleReviewSubmit(event) { event.preventDefault(); const form = event.target; const locationId = parseInt(form.dataset.id, 10); const ratingInput = form.querySelector('input[name="rating"]:checked'); if (!ratingInput) { return showNotification("Per favore, seleziona un voto.", "error"); } const location = state.locations.find(l => l.id === locationId); if (location) { const newRating = parseInt(ratingInput.value, 10); const newComment = { text: form.querySelector('textarea[name="comment"]').value.trim() }; location.ratings.push(newRating); location.comments.push(newComment); const allReviews = loadReviews(); if (!allReviews[locationId]) { allReviews[locationId] = { ratings: [], comments: [] }; } allReviews[locationId].ratings.push(newRating); allReviews[locationId].comments.push(newComment); saveReviews(allReviews); const marker = state.markerMap[locationId]; if (marker && marker.isPopupOpen()) { marker.setPopupContent(createPopupContent(location)); } showNotification("Recensione inviata, grazie!", "success"); applyFilters(); } }
+      function updateList(locs) { dom.resultsCount.textContent = `${locs.length} Trovati`; if (locs.length === 0) { dom.resultsList.innerHTML = "<li class='result-item'>Nessun locale trovato. Prova a modificare i filtri.</li>"; return; } const fragment = document.createDocumentFragment(); locs.forEach(l => { const li = document.createElement("li"); li.className = "result-item"; li.dataset.id = l.id; const avgRating = calculateAverageRating(l.ratings); li.innerHTML = `<strong class="result-item__name">${l.name}</strong> ${l.status === "Coming Soon" ? '<span class="badge">In Arrivo</span>':''}<br><small class="result-item__details">${l.address} - ${l.category} (${l.price_level})</small><div class="reviews__rating-summary"><span class="reviews__stars">${renderStars(avgRating)}</span> <span>(${l.ratings.length})</span></div>`; fragment.appendChild(li); }); dom.resultsList.innerHTML = ""; dom.resultsList.appendChild(fragment); }
+      function handleResultInteraction(event, type) { const targetItem = event.target.closest('.result-item'); if (!targetItem || !targetItem.dataset.id) return; const locationId = parseInt(targetItem.dataset.id, 10); if (!state.map || !state.markerMap[locationId]) { return showNotification("Mappa non disponibile per questo locale.", "error"); } const marker = state.markerMap[locationId]; if (type === 'click') { const location = state.locations.find(l => l.id === locationId); state.map.setView([location.lat, location.lng], 17); marker.openPopup(); document.querySelectorAll('.result-item.is-active').forEach(el => el.classList.remove('is-active')); targetItem.classList.add('is-active'); if (window.innerWidth <= 768) { dom.sidebar.classList.remove('is-open'); dom.sidebarToggle.setAttribute('aria-expanded', 'false'); } } }
+      function exportCSV() { if (state.filteredLocations.length === 0) { return showNotification("Nessun risultato da esportare.", "error"); } const headers = ["Nome", "Indirizzo", "Categoria", "Prezzo", "Voto Medio", "Numero Voti", "Servizi"]; const rows = state.filteredLocations.map(l => { const rowData = [l.name, l.address, l.category, l.price_level, calculateAverageRating(l.ratings), l.ratings.length, l.services.join(';')]; return rowData.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","); }); const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n"); const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "aperitivomap_roma.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+      function findNearMe() { if (!navigator.geolocation) { return showNotification("Geolocalizzazione non supportata.", "error"); } dom.nearMeBtn.disabled = true; dom.nearMeBtn.textContent = "Localizzo..."; navigator.geolocation.getCurrentPosition( position => { if (state.userLocationLayer) { state.map.removeLayer(state.userLocationLayer); } const userLatLng = L.latLng(position.coords.latitude, position.coords.longitude); const distanceMeters = parseFloat(dom.distanceFilter.value) * 1000; const userMarker = L.marker(userLatLng).bindPopup("Tu sei qui"); const circle = L.circle(userLatLng, { radius: distanceMeters, color: 'var(--color-secondary)', weight: 2 }); state.userLocationLayer = L.layerGroup([userMarker, circle]).addTo(state.map); const nearby = state.locations.filter(l => l.lat != null && L.latLng(l.lat, l.lng).distanceTo(userLatLng) <= distanceMeters ); updateMap(nearby); updateList(nearby); state.map.fitBounds(circle.getBounds(), { padding: [20,20] }); showNotification(`Trovati ${nearby.length} locali a meno di ${dom.distanceFilter.value} km.`); dom.nearMeBtn.disabled = false; dom.nearMeBtn.textContent = "Cerca Vicino a me"; }, () => { showNotification("Impossibile ottenere la posizione.", "error"); dom.nearMeBtn.disabled = false; dom.nearMeBtn.textContent = "Cerca Vicino a me"; } ); }
+      function updateWhatsNew() { const recent = state.locations.filter(l => l.addedDate).sort((a,b) => new Date(b.addedDate) - new Date(a.addedDate)).slice(0, 3); if(recent.length > 0) { dom.whatsNewContent.innerHTML = recent.map(l => `<div class="result-item" data-id="${l.id}"><strong class="result-item__name">${l.name}</strong><br><small class="result-item__details">${l.address}</small></div>`).join(''); } else { dom.whatsNewContent.innerHTML = "<p>Nessuna novità recente.</p>"; } }
+      function updateURL() { const center = state.map.getCenter(); const zoom = state.map.getZoom(); const params = new URLSearchParams(); params.set('lat', center.lat.toFixed(4)); params.set('lng', center.lng.toFixed(4)); params.set('zoom', zoom); history.pushState({}, '', `${window.location.pathname}?${params.toString()}`); }
+      function setupEventListeners() {
+          const filters = [dom.searchBox, dom.categoryFilter, dom.priceFilter, dom.ratingFilter, dom.servicesFilter];
+          filters.forEach(el => el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', applyFilters));
+          dom.exportCsvBtn.addEventListener("click", exportCSV);
+          dom.sidebarToggle.addEventListener("click", () => { const isOpen = dom.sidebar.classList.toggle('is-open'); dom.sidebarToggle.setAttribute('aria-expanded', isOpen); });
+          dom.resultsList.addEventListener('click', e => handleResultInteraction(e, 'click'));
+          dom.whatsNewContent.addEventListener('click', e => handleResultInteraction(e, 'click'));
+          if (state.map) {
+              dom.nearMeBtn.addEventListener("click", findNearMe);
+              dom.mapContainer.addEventListener('submit', function(event) { if (event.target.matches('.reviews__form')) { handleReviewSubmit(event); } });
+              state.map.on('moveend', updateURL);
+          } else {
+              dom.nearMeBtn.disabled = true;
+          }
+      }
+      function init() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const lat = params.get('lat') || 41.9028; const lng = params.get('lng') || 12.4964; const zoom = params.get('zoom') || 12;
+            state.map = L.map('map').setView([lat, lng], zoom);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19 }).addTo(state.map);
+            state.markers = L.markerClusterGroup(); state.map.addLayer(state.markers);
+        } catch(e) {
+            console.error("Errore Inizializzazione Mappa:", e);
+            showNotification("Impossibile caricare la mappa.", "error", 10000);
+            document.getElementById('map').innerHTML = '<div style="padding: 20px; text-align: center;"><h3>La mappa non può essere caricata.</h3><p>Assicurati di essere connesso a internet e ricarica la pagina. La lista dei locali è comunque disponibile.</p></div>';
+        }
+        
+        populateServicesFilter();
+        setupEventListeners();
+        
+        // NOTE: I dati dei locali sono definiti qui sotto per avere un file unico. Ho ripristinato la lista completa.
+        const localData = [
+            { "id": 1, "name": "Jerry Thomas Speakeasy", "lat": 41.8954, "lng": 12.4725, "address": "Vicolo Cellini, 30 (Centro Storico)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Jerry+Thomas", "services": ["wifi", "zona pedonale"], "status": "open", "addedDate": "2025-09-15" },
+            { "id": 2, "name": "Freni e Frizioni", "lat": 41.8895, "lng": 12.4687, "address": "Via del Politeama, 4 (Trastevere)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Freni+e+Frizioni", "services": ["wifi", "bus", "zona pedonale"], "status": "open", "addedDate": "2025-09-10" },
+            { "id": 3, "name": "Open Baladin", "lat": 41.8950, "lng": 12.4790, "address": "Via degli Specchi, 6 (Campo de' Fiori)", "category": "Birreria", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Open+Baladin", "services": ["wifi", "bus", "accessibile"], "status": "open", "addedDate": "2025-09-28" },
+            { "id": 4, "name": "Salotto 42", "lat": 41.9004, "lng": 12.4795, "address": "Piazza di Pietra, 42 (Pantheon)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Salotto+42", "services": ["metro", "bus", "wifi"], "status": "open" },
+            { "id": 5, "name": "Il Goccetto", "lat": 41.8948, "lng": 12.4708, "address": "Via dei Banchi Vecchi, 14 (Centro Storico)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Il+Goccetto", "services": ["bus", "zona pedonale"], "status": "open" },
+            { "id": 6, "name": "Ma Che Siete Venuti a Fa'", "lat": 41.8888, "lng": 12.4665, "address": "Via Benedetta, 25 (Trastevere)", "category": "Birreria", "price_level": "€", "photo": "https://placehold.co/300x150/FFC107/222222?text=MACCHE", "services": ["bus", "zona pedonale"], "status": "open" },
+            { "id": 7, "name": "Necci dal 1924", "lat": 41.8977, "lng": 12.5204, "address": "Via Fanfulla da Lodi, 68 (Pigneto)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Necci", "services": ["bus", "metro", "parcheggio", "giardino"], "status": "open" },
+            { "id": 8, "name": "La Terrazza del Cesàri", "lat": 41.9005, "lng": 12.4799, "address": "Via di Pietra, 89/A (Pantheon)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=La+Terrazza", "services": ["metro", "bus", "wifi"], "status": "open" },
+            { "id": 9, "name": "Sorpasso", "lat": 41.9068, "lng": 12.4635, "address": "Via Properzio, 31 (Prati)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Sorpasso", "services": ["metro", "bus", "accessibile"], "status": "open" },
+            { "id": 10, "name": "Latta - Fermenti e Miscele", "lat": 41.8741, "lng": 12.4836, "address": "Via Antonio Pacinotti, 83 (Ostiense)", "category": "Pub", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Latta", "services": ["metro", "bus", "parcheggio"], "status": "open" },
+            { "id": 11, "name": "Enoteca L'Antidoto", "lat": 41.8885, "lng": 12.4699, "address": "Vicolo del Bologna, 19 (Trastevere)", "category": "Enoteca", "price_level": "€€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=L'Antidoto", "services": ["zona pedonale"], "status": "open" },
+            { "id": 12, "name": "Treefolk's Public House", "lat": 41.8856, "lng": 12.4842, "address": "Viale di Trastevere, 192", "category": "Pub", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Treefolks", "services": ["bus", "parcheggio", "accessibile"], "status": "open" },
+            { "id": 13, "name": "Fluid", "lat": 41.8967, "lng": 12.4746, "address": "Via del Governo Vecchio, 46", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Fluid", "services": ["bus", "zona pedonale", "wifi"], "status": "open" },
+            { "id": 14, "name": "Ai Tre Scalini", "lat": 41.8971, "lng": 12.4925, "address": "Via Panisperna, 251 (Monti)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Ai+Tre+Scalini", "services": ["metro", "bus", "zona pedonale"], "status": "open" },
+            { "id": 15, "name": "Vineria del Rione", "lat": 41.7610, "lng": 12.2851, "address": "Piazza dei Ravennati, 21 (Ostia)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Vineria+Ostia", "services": ["parcheggio", "accessibile", "vista mare"], "status": "open" },
+            { "id": 16, "name": "Cantina Belsiana", "lat": 41.9056, "lng": 12.4800, "address": "Via Belsiana, 23 (Spagna)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Belsiana", "services": ["metro", "zona pedonale"], "status": "open" },
+            { "id": 17, "name": "Stavio", "lat": 41.8741, "lng": 12.4836, "address": "Via Antonio Pacinotti, 83 (Testaccio)", "category": "Birreria", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Stavio", "services": ["parcheggio", "accessibile"], "status": "open" },
+            { "id": 18, "name": "Enoteca Ferrara", "lat": 41.8883, "lng": 12.4716, "address": "Piazza Trilussa, 41 (Trastevere)", "category": "Enoteca", "price_level": "€€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Ferrara", "services": ["bus", "zona pedonale"], "status": "open" },
+            { "id": 19, "name": "Il Vinaietto", "lat": 41.8966, "lng": 12.4735, "address": "Via del Monte della Farina, 38", "category": "Wine Bar", "price_level": "€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Vinaietto", "services": ["bus"], "status": "open" },
+            { "id": 20, "name": "L'Oasi della Birra", "lat": 41.8795, "lng": 12.4728, "address": "Piazza Testaccio, 38", "category": "Birreria", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Oasi+della+Birra", "services": ["bus", "parcheggio", "accessibile"], "status": "open" },
+            { "id": 21, "name": "Terrazza Monti", "lat": 41.8973, "lng": 12.4938, "address": "Via dei Serpenti, 109 (Monti)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Terrazza+Monti", "services": ["metro", "wifi"], "status": "open" },
+            { "id": 22, "name": "Luppolo Station", "lat": 41.8860, "lng": 12.4631, "address": "Via Giuseppe Parini, 4 (Trastevere)", "category": "Birreria", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Luppolo+Station", "services": ["wifi", "bus"], "status": "open" },
+            { "id": 23, "name": "Blind Pig", "lat": 41.8841, "lng": 12.5126, "address": "Via La Spezia, 72 (Appio Latino)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Blind+Pig", "services": ["metro"], "status": "open" },
+            { "id": 24, "name": "Litro", "lat": 41.8791, "lng": 12.4604, "address": "Via Fratelli Bonnet, 5 (Monteverde)", "category": "Wine Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Litro", "services": ["bus", "wifi"], "status": "open" },
+            { "id": 25, "name": "Duke's", "lat": 41.9197, "lng": 12.4831, "address": "Viale Parioli, 200 (Parioli)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Duke's", "services": ["bus", "parcheggio"], "status": "open" },
+            { "id": 26, "name": "Singita Miracle Beach", "lat": 41.8315, "lng": 12.2343, "address": "Via Silvi Marina (Fregene)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Singita", "services": ["parcheggio", "vista mare"], "status": "open" },
+            { "id": 27, "name": "Cantina Simonetti", "lat": 41.8080, "lng": 12.6738, "address": "Via G. Matalia, 19 (Frascati)", "category": "Enoteca", "price_level": "€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Simonetti", "services": ["parcheggio"], "status": "open" },
+            { "id": 28, "name": "Pastificio San Lorenzo", "lat": 41.8996, "lng": 12.5147, "address": "Via Tiburtina, 196 (San Lorenzo)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Pastificio", "services": ["bus", "metro"], "status": "open" },
+            { "id": 29, "name": "Caffè Palombini", "lat": 41.8340, "lng": 12.4665, "address": "Piazzale Konrad Adenauer, 12 (EUR)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Palombini", "services": ["metro", "parcheggio", "accessibile"], "status": "open" },
+            { "id": 30, "name": "Osteria Ariccia", "lat": 41.7225, "lng": 12.6713, "address": "Corso G. Garibaldi, 11 (Ariccia)", "category": "Enoteca", "price_level": "€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Osteria+Ariccia", "services": ["parcheggio"], "status": "open" },
+            { "id": 31, "name": "La Gatta Mangiona", "lat": 41.8797, "lng": 12.4623, "address": "Via Federico Ozanam, 30-32 (Monteverde)", "category": "Birreria", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Gatta+Mangiona", "services": ["bus"], "status": "open" },
+            { "id": 32, "name": "The Court", "lat": 41.8920, "lng": 12.4939, "address": "Via Labicana, 125 (Colosseo)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=The+Court", "services": ["metro"], "status": "open" },
+            { "id": 33, "name": "Chapter Roma", "lat": 41.8937, "lng": 12.4764, "address": "Via di S. Maria De' Calderari, 47 (Ghetto)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Chapter", "services": ["bus", "wifi"], "status": "open" },
+            { "id": 34, "name": "L'Angolo Divino", "lat": 41.8953, "lng": 12.4720, "address": "Via dei Balestrari, 12 (Campo de' Fiori)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Angolo+Divino", "services": ["bus", "zona pedonale"], "status": "open" },
+            { "id": 35, "name": "Tira e Molla", "lat": 41.8845, "lng": 12.5186, "address": "Via Enna, 2 (San Giovanni)", "category": "Pub", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Tira+e+Molla", "services": ["metro", "bus", "accessibile"], "status": "open" },
+            { "id": 36, "name": "La Sibilla", "lat": 41.9634, "lng": 12.7958, "address": "Via della Sibilla, 50 (Tivoli)", "category": "Wine Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=La+Sibilla", "services": ["parcheggio"], "status": "open" },
+            { "id": 37, "name": "Bum Bum Di Melis", "lat": 41.7667, "lng": 12.2858, "address": "Lungomare della Salute, 111 (Fiumicino)", "category": "Pub", "price_level": "€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Bum+Bum", "services": ["parcheggio"], "status": "open" },
+            { "id": 38, "name": "Club Derrière", "lat": 41.8973, "lng": 12.4705, "address": "Vicolo delle Coppelle, 59 (Centro Storico)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Derrière", "services": ["zona pedonale"], "status": "open" },
+            { "id": 39, "name": "Wisdomless", "lat": 41.8806, "lng": 12.4862, "address": "Via Acaia, 4 (Aventino)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Wisdomless", "services": ["metro", "bus"], "status": "open" },
+            { "id": 40, "name": "Cvlto", "lat": 41.9015, "lng": 12.5181, "address": "Viale del Policlinico, 129 (Nomentano)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Cvlto", "services": ["metro", "bus", "wifi"], "status": "open" },
+            { "id": 41, "name": "Trimani", "lat": 41.9030, "lng": 12.5028, "address": "Via Goito, 20 (Stazione Termini)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Trimani", "services": ["metro", "bus", "accessibile"], "status": "open" },
+            { "id": 42, "name": "Queen Makeda Grand Pub", "lat": 41.8804, "lng": 12.4883, "address": "Via di S. Saba, 11 (Aventino)", "category": "Pub", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Queen+Makeda", "services": ["metro", "bus", "parcheggio", "accessibile", "giardino"], "status": "open" },
+            { "id": 43, "name": "La Zanzara", "lat": 41.9055, "lng": 12.4665, "address": "Via Crescenzio, 84 (Prati)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=La+Zanzara", "services": ["metro", "bus", "wifi"], "status": "open" },
+            { "id": 44, "name": "Terrazza Borromini", "lat": 41.8988, "lng": 12.4732, "address": "Via di Santa Maria dell'Anima, 30 (Piazza Navona)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Borromini", "services": ["bus", "wifi"], "status": "open" },
+            { "id": 45, "name": "Vigna Cunial", "lat": 41.7618, "lng": 12.6300, "address": "Via di Fontana Candida, 2 (Monte Porzio Catone)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Vigna+Cunial", "services": ["parcheggio", "accessibile", "giardino"], "status": "open" },
+            { "id": 46, "name": "Chiosco Ribaudo", "lat": 41.8906, "lng": 12.4820, "address": "Piazza Testaccio (Testaccio)", "category": "Cocktail Bar", "price_level": "€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Ribaudo", "services": ["bus", "accessibile"], "status": "open" },
+            { "id": 47, "name": "AcquaRoof Terrazza Molinari", "lat": 41.9052, "lng": 12.4768, "address": "Via del Vantaggio, 14 (Centro Storico)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=AcquaRoof", "services": ["metro", "wifi"], "status": "open" },
+            { "id": 48, "name": "Vino al Vino", "lat": 42.0463, "lng": 12.2407, "address": "Via del Molo, 22 (Bracciano)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Vino+al+Vino", "services": ["parcheggio", "vista lago"], "status": "open" },
+            { "id": 49, "name": "L'Oste della Bon'Ora", "lat": 41.7458, "lng": 12.6468, "address": "Viale Vittorio Veneto, 133 (Grottaferrata)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Oste+Bon'Ora", "services": ["parcheggio", "accessibile", "giardino"], "status": "open" },
+            { "id": 50, "name": "Malandros - Bodeguita de Cuba", "lat": 41.8841, "lng": 12.4789, "address": "Via del Gazometro, 48 (Ostiense)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Malandros", "services": ["metro", "bus"], "status": "open" },
+            { "id": 51, "name": "La Bottega del Caffè", "lat": 41.7699, "lng": 12.6175, "address": "Piazza di Corte, 1 (Castel Gandolfo)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Bottega+del+Caffe", "services": ["parcheggio", "vista lago"], "status": "open" },
+            { "id": 52, "name": "Cargo", "lat": 41.8970, "lng": 12.5190, "address": "Via del Pigneto, 20 (Pigneto)", "category": "Pub", "price_level": "€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Cargo", "services": ["metro", "zona pedonale"], "status": "open" },
+            { "id": 53, "name": "Cerveceria de Campo", "lat": 41.7742, "lng": 12.2224, "address": "Piazza G.B. Grassi, 11 (Fiumicino)", "category": "Birreria", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Cerveceria", "services": ["parcheggio"], "status": "open" },
+            { "id": 54, "name": "Spirito", "lat": 41.8972, "lng": 12.5225, "address": "Via Fanfulla da Lodi, 53 (Pigneto)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Spirito", "services": ["metro", "bus"], "status": "open" },
+            { "id": 55, "name": "Bar del Cinque", "lat": 41.8893, "lng": 12.4682, "address": "Vicolo de' Cinque, 5 (Trastevere)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Bar+del+Cinque", "services": ["zona pedonale", "bus"], "status": "open" },
+            { "id": 56, "name": "Enoteca Provincia Romana", "lat": 41.8931, "lng": 12.4856, "address": "Foro Traiano, 85 (Fori Imperiali)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Provincia+Romana", "services": ["bus", "metro"], "status": "open" },
+            { "id": 57, "name": "La Piccola Abbazia", "lat": 41.7601, "lng": 12.6582, "address": "Corso del Popolo, 40 (Genzano di Roma)", "category": "Pub", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Piccola+Abbazia", "services": ["parcheggio"], "status": "open" },
+            { "id": 58, "name": "Bar La Casina", "lat": 41.7135, "lng": 12.6953, "address": "Piazza G. Mazzini (Nemi)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Bar+La+Casina", "services": ["parcheggio", "vista lago"], "status": "open" },
+            { "id": 59, "name": "Rosti", "lat": 41.8965, "lng": 12.5235, "address": "Via Bartolomeo d'Alviano, 65 (Pigneto)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Rosti", "services": ["metro", "giardino"], "status": "open" },
+            { "id": 60, "name": "Bodeguita del Molo", "lat": 41.4530, "lng": 12.5855, "address": "Riviera Mallozzi, 73 (Anzio)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Bodeguita+Anzio", "services": ["parcheggio", "vista mare"], "status": "open" },
+            { "id": 61, "name": "L'Acqua Salata", "lat": 42.1002, "lng": 12.1643, "address": "Piazza Giuseppe Mazzini, 11 (Anguillara Sabazia)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Acqua+Salata", "services": ["parcheggio", "vista lago"], "status": "open" },
+            { "id": 62, "name": "Momart Cafè", "lat": 41.9067, "lng": 12.5113, "address": "Viale XXI Aprile, 19 (Nomentano)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Momart", "services": ["bus", "metro"], "status": "open" },
+            { "id": 63, "name": "Enoteca del Gatto", "lat": 41.8340, "lng": 12.2858, "address": "Corso Umberto I, 82 (Anzio)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Enoteca+del+Gatto", "services": ["parcheggio"], "status": "open" },
+            { "id": 64, "name": "Challet del Lago", "lat": 42.1287, "lng": 12.1819, "address": "Viale Reginaldo Belloni, 22 (Trevignano Romano)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Challet+del+Lago", "services": ["parcheggio", "vista lago"], "status": "open" },
+            { "id": 65, "name": "Metropolita", "lat": 41.8355, "lng": 12.4678, "address": "Piazza G. Marconi, 10 (EUR)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Metropolita", "services": ["metro", "parcheggio", "wifi"], "status": "open" },
+            { "id": 66, "name": "L'Elementare", "lat": 41.8888, "lng": 12.4664, "address": "Via Benedetta, 23 (Trastevere)", "category": "Birreria", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=L'Elementare", "services": ["zona pedonale"], "status": "open" },
+            { "id": 67, "name": "Caffè Boario", "lat": 41.8790, "lng": 12.4745, "address": "Piazza Giustiniani, 2 (Testaccio)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Caffe+Boario", "services": ["parcheggio", "accessibile"], "status": "open" },
+            { "id": 68, "name": "Streatart", "lat": 41.7335, "lng": 12.5188, "address": "Via Nettunense, 147 (Marino)", "category": "Pub", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Streatart", "services": ["parcheggio"], "status": "open" },
+            { "id": 69, "name": "La Stiva", "lat": 41.7744, "lng": 12.2211, "address": "Via della Torre Clementina, 218 (Fiumicino)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=La+Stiva", "services": ["parcheggio"], "status": "open" },
+            { "id": 70, "name": "La Drogheria", "lat": 41.8719, "lng": 12.4990, "address": "Piazza della Marranella, 17 (Torpignattara)", "category": "Cocktail Bar", "price_level": "€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=La+Drogheria", "services": ["bus"], "status": "open" },
+            { "id": 71, "name": "Why Not?", "lat": 41.8655, "lng": 12.5594, "address": "Piazza San Giovanni Bosco, 44 (Don Bosco)", "category": "Pub", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Why+Not", "services": ["metro", "accessibile"], "status": "open" },
+            { "id": 72, "name": "Magno", "lat": 41.9360, "lng": 12.5408, "address": "Piazza Verbano, 1 (Trieste)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Magno", "services": ["bus"], "status": "open" },
+            { "id": 73, "name": "Mezzo", "lat": 41.8790, "lng": 12.5082, "address": "Via del Mandrione, 63 (Mandrione)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Mezzo", "services": ["parcheggio"], "status": "open" },
+            { "id": 74, "name": "La Mescita", "lat": 41.8659, "lng": 12.4789, "address": "Via Luigi Fincati, 44 (Garbatella)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=La+Mescita", "services": ["metro", "bus"], "status": "open" },
+            { "id": 75, "name": "Adelaide", "lat": 41.9079, "lng": 12.4839, "address": "Viale Regina Margherita, 91 (Salario)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Adelaide", "services": ["bus", "metro"], "status": "open" },
+            { "id": 76, "name": "Bukowski", "lat": 41.9085, "lng": 12.4633, "address": "Via degli Omagodai, 20 (Prati)", "category": "Pub", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Bukowski", "services": ["metro", "bus"], "status": "open" },
+            { "id": 77, "name": "Vinificio", "lat": 41.8727, "lng": 12.4705, "address": "Piazza dell'Emporio, 1 (Testaccio)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Vinificio", "services": ["bus", "parcheggio"], "status": "open" },
+            { "id": 78, "name": "Fauno 3.0", "lat": 41.8899, "lng": 12.4715, "address": "Piazza dei Ponziani, 6 (Trastevere)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Fauno+3.0", "services": ["zona pedonale"], "status": "open" },
+            { "id": 79, "name": "Jamboree", "lat": 41.9329, "lng": 12.5408, "address": "Via Tagliamento, 40 (Coppedè)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Jamboree", "services": ["bus"], "status": "open" },
+            { "id": 80, "name": "The Race Club", "lat": 41.8918, "lng": 12.4947, "address": "Via Labicana, 52 (Colosseo)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Race+Club", "services": ["metro", "bus"], "status": "open" },
+            { "id": 81, "name": "La Conventicola degli Ultramoderni", "lat": 41.8990, "lng": 12.4705, "address": "Via di Porta Labicana, 32 (San Lorenzo)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Conventicola", "services": ["bus"], "status": "open" },
+            { "id": 82, "name": "Barred", "lat": 41.8837, "lng": 12.5015, "address": "Via Cesena, 30 (Appio Latino)", "category": "Wine Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Barred", "services": ["metro"], "status": "open" },
+            { "id": 83, "name": "L'Orso 'mbriaco", "lat": 41.7828, "lng": 12.6580, "address": "Via M. D'Azeglio, 24 (Albano Laziale)", "category": "Pub", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Orso+Mbriaco", "services": ["parcheggio"], "status": "open" },
+            { "id": 84, "name": "Tipico", "lat": 41.6508, "lng": 12.7210, "address": "Corso della Repubblica, 252 (Velletri)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Tipico+Velletri", "services": ["parcheggio"], "status": "open" },
+            { "id": 85, "name": "Il Gatto e La Volpe", "lat": 41.8995, "lng": 12.5146, "address": "Via dei Reti, 29 (San Lorenzo)", "category": "Wine Bar", "price_level": "€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Gatto+e+Volpe", "services": ["bus", "tram"], "status": "open" },
+            { "id": 86, "name": "Bar Pasticceria Trevi", "lat": 42.1388, "lng": 12.1155, "address": "Via Settevene Palo, 221 (Cerveteri)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Trevi+Cerveteri", "services": ["parcheggio", "accessibile"], "status": "open" },
+            { "id": 87, "name": "La Baia", "lat": 41.9566, "lng": 12.0494, "address": "Lungomare Marco Polo (Ladispoli)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=La+Baia", "services": ["parcheggio", "vista mare"], "status": "open" },
+            { "id": 88, "name": "Molo 21", "lat": 42.0933, "lng": 11.7940, "address": "Riva di Traiano (Civitavecchia)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Molo+21", "services": ["parcheggio"], "status": "open" },
+            { "id": 89, "name": "La Tana del Luppolo", "lat": 41.8893, "lng": 12.5562, "address": "Via dei Castani, 197 (Centocelle)", "category": "Birreria", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Tana+del+Luppolo", "services": ["metro"], "status": "open" },
+            { "id": 90, "name": "Anima Vini e Cucina", "lat": 41.8671, "lng": 12.4497, "address": "Via di Val Tellina, 89 (Portuense)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Anima", "services": ["bus"], "status": "open" },
+            { "id": 91, "name": "Palmerie", "lat": 41.9213, "lng": 12.4820, "address": "Viale Parioli, 7 (Parioli)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Palmerie", "services": ["bus", "parcheggio"], "status": "open" },
+            { "id": 92, "name": "Malandrino", "lat": 41.8890, "lng": 12.4720, "address": "Via dei Salumi, 4 (Trastevere)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Malandrino", "services": ["zona pedonale"], "status": "open" },
+            { "id": 93, "name": "Angolo Sciarra", "lat": 41.8995, "lng": 12.4820, "address": "Via Marco Minghetti, 8 (Fontana di Trevi)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Angolo+Sciarra", "services": ["metro", "bus", "zona pedonale"], "status": "open" },
+            { "id": 94, "name": "T-Bar", "lat": 41.8767, "lng": 12.4828, "address": "Via Ostiense, 182/A (Ostiense)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=T-Bar", "services": ["metro", "bus"], "status": "open" },
+            { "id": 95, "name": "Remigio", "lat": 41.8795, "lng": 12.5225, "address": "Via Santa Maria Ausiliatrice, 106 (Furio Camillo)", "category": "Enoteca", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Remigio", "services": ["metro"], "status": "open" },
+            { "id": 96, "name": "Drink Art Gallery", "lat": 41.9567, "lng": 12.5699, "address": "Via Nomentana, 1111 (Talenti)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Drink+Art", "services": ["bus", "parcheggio"], "status": "open" },
+            { "id": 97, "name": "Il Baretto", "lat": 41.8055, "lng": 12.6711, "address": "Via Garibaldi, 27 (Frascati)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Il+Baretto", "services": ["parcheggio"], "status": "open" },
+            { "id": 98, "name": "La Salsamenteria", "lat": 41.9168, "lng": 12.4746, "address": "Piazza della Marina, 1 (Flaminio)", "category": "Wine Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/FFC107/222222?text=La+Salsamenteria", "services": ["bus", "tram"], "status": "open" },
+            { "id": 99, "name": "Il Vinaietto", "lat": 41.8966, "lng": 12.4735, "address": "Via del Monte della Farina, 38", "category": "Wine Bar", "price_level": "€", "photo": "https://placehold.co/300x150/FFC107/222222?text=Vinaietto", "services": ["bus"], "status": "open" },
+            { "id": 100, "name": "Metropolita", "lat": 41.8355, "lng": 12.4678, "address": "Piazza G. Marconi, 10 (EUR)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Metropolita", "services": ["metro", "parcheggio", "wifi"], "status": "open" }
+        ];
+
+        const savedReviews = loadReviews();
+        state.locations = localData.map(l => {
+            const reviews = savedReviews[l.id] || { ratings: [], comments: [] };
+            return { ...l, ratings: reviews.ratings, comments: reviews.comments };
+        });
+
+        updateWhatsNew();
+        applyFilters();
+      }
+      window.addEventListener('load', init);
+    })();
+  </script>
+</body>
+</html>
