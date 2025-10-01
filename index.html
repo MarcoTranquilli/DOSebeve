@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AperitivoMap - Roma (Corretto)</title>
+  <title>AperitivoMap - Roma (Funzionante)</title>
   <meta name="description" content="Trova i migliori locali per aperitivi, cocktail e birre a Roma e provincia. Filtra per categoria, prezzo, servizi e posizione.">
   
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" integrity="sha256-k2jug3sDk8r4S2IK8c46Cjwb2I9SIj2z2k4RcJn+dMA=" crossorigin=""/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" integrity="sha256-L9jtjpItu52zkFUxgpaNdjzL+bS1jW2SMmgU0YvbzS4=" crossorigin=""/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -112,8 +112,8 @@
   <button id="sidebar-toggle" class="sidebar-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Apri/Chiudi menu filtri">☰</button>
   <div id="notification" class="notification" role="alert" aria-live="assertive"></div>
   
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" integrity="sha256-9ZypKMNsM+bN4Y5GGgYscAKyM9yK2SUSyA521bJfbPg=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   
   <script>
     (function() {
@@ -176,7 +176,6 @@
         populateServicesFilter();
         setupEventListeners();
         
-        // NOTE: I dati dei locali sono definiti qui sotto per avere un file unico.
         const localData = [
             { "id": 1, "name": "Jerry Thomas Speakeasy", "lat": 41.8954, "lng": 12.4725, "address": "Vicolo Cellini, 30 (Centro Storico)", "category": "Cocktail Bar", "price_level": "€€€", "photo": "https://placehold.co/300x150/D81B60/FFFFFF?text=Jerry+Thomas", "services": ["wifi", "zona pedonale"], "status": "open", "addedDate": "2025-09-15" },
             { "id": 2, "name": "Freni e Frizioni", "lat": 41.8895, "lng": 12.4687, "address": "Via del Politeama, 4 (Trastevere)", "category": "Cocktail Bar", "price_level": "€€", "photo": "https://placehold.co/300x150/222222/FFFFFF?text=Freni+e+Frizioni", "services": ["wifi", "bus", "zona pedonale"], "status": "open", "addedDate": "2025-09-10" },
